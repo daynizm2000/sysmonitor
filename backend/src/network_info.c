@@ -38,11 +38,11 @@ static sysm_errno_t network_info_update_bytes(struct network_info *netwinfo)
                 PFS_NET_DEV_READ_BYTES_POS,
                 PFS_NET_DEV_WRITE_BYTES_POS
         };
-        unsigned long long retvals[sizeof(words) / sizeof(*words)] = {0};
+        unsigned long long retvals[ARRAY_SIZE(words)] = {0};
         const char *pattern;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_net_dev), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_NET_DEV), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/net/dev", fdata, sizeof(fdata));
 
@@ -62,7 +62,7 @@ static sysm_errno_t network_info_update_bytes(struct network_info *netwinfo)
 
                 line++;
 
-                pfs_net_dev_parse_line(line, words, retvals, sizeof(words) / sizeof(*words));
+                pfs_net_dev_parse_line(line, words, retvals, ARRAY_SIZE(words));
 
                 netwinfo->read_speed_b_sec += retvals[0];
                 netwinfo->write_speed_b_sec += retvals[1];
@@ -78,6 +78,8 @@ sysm_errno_t network_info_update_first(struct network_info *netwinfo)
         if (!netwinfo)
                 return SYSM_FAILURE;
 
+        sysm_update_status_update(&netwinfo->state);
+
         return network_info_update_bytes(netwinfo);
 }
 
@@ -90,12 +92,12 @@ sysm_errno_t network_info_update_last(struct network_info *netwinfo)
         if (!netwinfo)
                 return SYSM_FAILURE;
 
-        old_read_bytes= netwinfo->read_speed_b_sec;
+        old_read_bytes = netwinfo->read_speed_b_sec;
         old_write_bytes = netwinfo->write_speed_b_sec;
 
         ret = network_info_update_bytes(netwinfo);
 
-        if (ret != SYSM_SUCCESS) {
+        if (ret) {
                 netwinfo->read_speed_b_sec = 0;
                 netwinfo->write_speed_b_sec = 0;
 
@@ -103,11 +105,13 @@ sysm_errno_t network_info_update_last(struct network_info *netwinfo)
         }
 
         netwinfo->read_speed_b_sec = (netwinfo->read_speed_b_sec >= old_read_bytes)
-                ? (netwinfo->read_speed_b_sec - old_read_bytes) / (double)SYSM_UPDATE_INTERVAL_SEC : 0;
+                ? (netwinfo->read_speed_b_sec - old_read_bytes) / (double)sysm_update_interval_sec : 0;
 
         netwinfo->write_speed_b_sec = (netwinfo->write_speed_b_sec >= old_write_bytes)
-                ? (netwinfo->write_speed_b_sec - old_write_bytes) / (double)SYSM_UPDATE_INTERVAL_SEC : 0;
+                ? (netwinfo->write_speed_b_sec - old_write_bytes) / (double)sysm_update_interval_sec : 0;
 
+        sysm_update_status_update(&netwinfo->state);
+        
         return SYSM_SUCCESS;
 }
 
@@ -117,6 +121,8 @@ void network_info_init(struct network_info *netwinfo)
                 return;
 
         memset(netwinfo, 0, sizeof(struct network_info));
+
+        netwinfo->state = SYSM_STATE_FIRST_UPDATE;
 }
 
 sysm_errno_t network_info_update(struct network_info *netwinfo)
@@ -128,7 +134,7 @@ sysm_errno_t network_info_update(struct network_info *netwinfo)
 
         ret = network_info_update_first(netwinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         sysm_sleep();

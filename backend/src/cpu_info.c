@@ -19,11 +19,8 @@
 static void pfs_stat_parse_line(const char *line, unsigned int *sort_words,
         unsigned long long *retvals, unsigned int count)
 {
-        unsigned int word;
-        unsigned int idx;
-
-        word = 1;
-        idx = 0;
+        unsigned int word = 1;
+        unsigned int idx = 0;
 
         for (const char *l = line; *l != '\n' && idx < count; word++) {
                 if (word == sort_words[idx]) {
@@ -76,7 +73,7 @@ static inline void __cpu_info_set_ticks(struct cpu_time_metrics *ticks, const ch
                 PFS_STAT_SOFTIRQ_POS,
                 PFS_STAT_STEAL_POS
         };
-        unsigned long long retvals[sizeof(words) / sizeof(*words)];
+        unsigned long long retvals[ARRAY_SIZE(words)];
         const char *line;
 
         line = pfs_stat_find_line(filedata, size, "cpu");
@@ -102,7 +99,7 @@ static sysm_errno_t __cpu_info_set_usage_ticks(struct cpu_info *cpuinfo)
         ssize_t fsize;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_stat), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_STAT), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/stat", fdata, sizeof(fdata));
 
@@ -129,9 +126,9 @@ static sysm_errno_t __cpu_info_set_usage_ticks(struct cpu_info *cpuinfo)
                                 PFS_STAT_SYSTEM_POS,
                                 PFS_STAT_IDLE_POS
                         };
-                        unsigned long long retvals[sizeof(words) / sizeof(*words)];
+                        unsigned long long retvals[ARRAY_SIZE(words)];
 
-                        pfs_stat_parse_line(line, words, retvals, sizeof(words) / sizeof(*words));
+                        pfs_stat_parse_line(line, words, retvals, ARRAY_SIZE(words));
 
                         ticks->user = retvals[0];
                         ticks->system = retvals[1];
@@ -202,10 +199,10 @@ static inline sysm_errno_t cpu_info_set_usage_last(struct cpu_info *cpuinfo)
 
         ret = __cpu_info_set_usage_ticks(cpuinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 goto cleanup;
 
-        cpuinfo->total_usage_pct = calculate_cpu_usage(&cpuinfo_ticks, &cpuinfo->__ticks);
+        cpuinfo->usage_pct = calculate_cpu_usage(&cpuinfo_ticks, &cpuinfo->__ticks);
 
         for (unsigned int i = 0; i < cpuinfo->core_count; i++)
                 cpuinfo->cores[i].usage_pct = calculate_cpu_usage(&cpu_core_ticks[i],
@@ -227,15 +224,17 @@ sysm_errno_t cpu_info_update_first(struct cpu_info *cpuinfo)
 
         ret = cpu_info_set_usage_first(cpuinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         cpuinfo->cpu_ticks_delta = calculate_sum_ticks(&cpuinfo->__ticks);
 
+        sysm_update_status_update(&cpuinfo->state);
+
         return ret;
 }
 
-static unsigned int cpu_khz_read(int fd)
+static unsigned int read_cpu_khz(int fd)
 {
         char buffer[128];
         ssize_t buflen;
@@ -248,38 +247,37 @@ static unsigned int cpu_khz_read(int fd)
         return atoi(buffer);
 }
 
-static sysm_errno_t cpu_info_set_ghz(struct cpu_info *cpuinfo)
+static unsigned int read_cpu_khz_from_path(const char *path)
 {
-        int cur_freq_fd;
-        int max_freq_fd;
+        char buffer[128];
+        ssize_t bufsize;
+
+        bufsize = sysm_read_file_from_path(path, buffer, sizeof(buffer));
+
+        if (bufsize < 0)
+                sysm_log_ret(0, SYSM_ERR "Failed to read: %s\n", path);
+
+        return atoi(buffer);
+}
+
+static void cpu_info_set_ghz(struct cpu_info *cpuinfo)
+{
+        unsigned int cur_khz;
+        unsigned int max_khz;
 
         if (sysm_cached_fds) {
-                cur_freq_fd = sysm_fds_get_fd(sysm_cached_fds->sysfs_cpu0_scaling_cur_freq);
-                max_freq_fd = sysm_fds_get_fd(sysm_cached_fds->sysfs_cpu0_cpuinfo_max_freq);
+                cur_khz = read_cpu_khz(sysm_cached_fds_get_fd(SYSM_FDS_SYSFS_CPU0_SCALING_CUR_FREQ));
+                max_khz = read_cpu_khz(sysm_cached_fds_get_fd(SYSM_FDS_SYSFS_CPU0_CPUINFO_MAX_FREQ));
         }
         else {
-                cur_freq_fd = open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", O_RDONLY);
-
-                if (cur_freq_fd < 0)
-                        sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to open file /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq\n");
-
-                max_freq_fd = open("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", O_RDONLY);
-
-                if (max_freq_fd < 0) {
-                        close(cur_freq_fd);
-                        sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to open file /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq\n");
-                }
+                cur_khz = read_cpu_khz_from_path("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
+                max_khz = read_cpu_khz_from_path("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
         }
 
-        cpuinfo->max_ghz = KHZ_TO_GHZ(cpu_khz_read(max_freq_fd));
-        cpuinfo->current_ghz = KHZ_TO_GHZ(cpu_khz_read(cur_freq_fd));
-
-        if (!sysm_cached_fds) {
-                close(cur_freq_fd);
-                close(max_freq_fd);
-        }
-
-        return SYSM_SUCCESS;
+        if (cur_khz)
+                cpuinfo->current_ghz = KHZ_TO_GHZ(cur_khz);
+        if (max_khz)
+                cpuinfo->max_ghz = KHZ_TO_GHZ(max_khz);
 }
 
 sysm_errno_t cpu_info_update_last(struct cpu_info *cpuinfo)
@@ -292,10 +290,7 @@ sysm_errno_t cpu_info_update_last(struct cpu_info *cpuinfo)
 
         ret = cpu_info_set_usage_last(cpuinfo);
 
-        if (ret == SYSM_SUCCESS)
-                ret = cpu_info_set_ghz(cpuinfo);
-        else
-                cpu_info_set_ghz(cpuinfo);
+        cpu_info_set_ghz(cpuinfo);
 
         sum_ticks = calculate_sum_ticks(&cpuinfo->__ticks);
 
@@ -303,6 +298,8 @@ sysm_errno_t cpu_info_update_last(struct cpu_info *cpuinfo)
                 cpuinfo->cpu_ticks_delta = sum_ticks - cpuinfo->cpu_ticks_delta;
         else
                 cpuinfo->cpu_ticks_delta = 0;
+
+        sysm_update_status_update(&cpuinfo->state);
 
         return ret;
 }
@@ -313,6 +310,7 @@ sysm_errno_t cpu_info_init(struct cpu_info *cpuinfo)
                 return SYSM_FAILURE;
 
         memset(cpuinfo, 0, sizeof(struct cpu_info));
+        cpuinfo->state = SYSM_STATE_FIRST_UPDATE;
         
         cpuinfo->core_count = sysconf(_SC_NPROCESSORS_ONLN);
         
@@ -336,7 +334,7 @@ sysm_errno_t cpu_info_update(struct cpu_info *cpuinfo)
 
         ret = cpu_info_update_first(cpuinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         sysm_sleep();

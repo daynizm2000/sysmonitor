@@ -13,13 +13,13 @@ sysm_errno_t swap_info_update(struct swap_info *swapinfo)
 {
         unsigned long long swaptotal;
         unsigned long long swapfree;
-        const char *keys[2] = {"SwapTotal", "SwapFree"};
-        unsigned long long rets[2] = {0};
+        const char *keys[] = {"SwapTotal", "SwapFree"};
+        unsigned long long rets[ARRAY_SIZE(keys)] = {0};
 
         if (!swapinfo)
                 return SYSM_FAILURE;
 
-        sysm_meminfo_file_parse_lines(keys, rets, 2);
+        sysm_meminfo_file_parse_lines(keys, rets, ARRAY_SIZE(keys));
 
         swaptotal = rets[0];
         swapfree = rets[1];
@@ -32,8 +32,8 @@ sysm_errno_t swap_info_update(struct swap_info *swapinfo)
                 return SYSM_SUCCESS;
         }
 
-        swapinfo->total_gib = SYSM_KB_TO_GIB(swaptotal);
-        swapinfo->used_gib = SYSM_KB_TO_GIB(swaptotal - swapfree);
+        swapinfo->total_gib = KB_TO_GIB(swaptotal);
+        swapinfo->used_gib = KB_TO_GIB(swaptotal - swapfree);
         swapinfo->usage_pct = (double)(swaptotal - swapfree) / swaptotal * 100;
 
         return SYSM_SUCCESS;

@@ -1,6 +1,6 @@
 #include "../include/utils.h"
 
-void gui_page_base_init(struct sysm_page *page, const char *id,
+void gui_page_base_init(struct gui_page *page, const char *id,
         const char *name, const char *title)
 {
         GtkWidget *label;
@@ -14,9 +14,9 @@ void gui_page_base_init(struct sysm_page *page, const char *id,
         gtk_box_append(GTK_BOX(page->box), label);
 }
 
-struct sysm_graph_line *gui_graph_line_create_init(GdkRGBA *color)
+struct gui_graph_line *gui_graph_line_create_init(GdkRGBA *color)
 {
-        struct sysm_graph_line *line = malloc(sizeof(struct sysm_graph_line));
+        struct gui_graph_line *line = malloc(sizeof(struct gui_graph_line));
 
         if (!line)
                 sysm_log_ret(NULL, SYSM_ERR "failed to memory allocation in libc malloc\n");
@@ -33,12 +33,12 @@ struct sysm_graph_line *gui_graph_line_create_init(GdkRGBA *color)
         return line;
 }
 
-void gui_graph_line_free(struct sysm_graph_line *line)
+void gui_graph_line_free(struct gui_graph_line *line)
 {
         free(line);
 }
 
-void gui_graph_init(struct sysm_graph *graph, struct sysm_graph_line *line,
+void gui_graph_init(struct gui_graph *graph, struct gui_graph_line *line,
                 void (*draw)(GtkDrawingArea*, cairo_t*, int, int, gpointer),
                 void *arg, double maxval)
 {
@@ -61,21 +61,21 @@ void gui_graph_init(struct sysm_graph *graph, struct sysm_graph_line *line,
         }
 }
 
-static inline void graph_line_history_update(struct sysm_graph_line *line, double val, int sec)
+static inline void graph_line_history_update(struct gui_graph_line *line, double val, int sec)
 {
         unsigned int step = sysm_update_interval_sec;
 
-        if (sec >= SYSM_GRAPH_SECS) {
-                if (step >= SYSM_GRAPH_SECS) {
-                        for (int i = 0; i < SYSM_GRAPH_SECS; i++)
+        if (sec >= GUI_GRAPH_SECS) {
+                if (step >= GUI_GRAPH_SECS) {
+                        for (int i = 0; i < GUI_GRAPH_SECS; i++)
                                 line->history[i] = val;
 
                         return;
                 }
 
-                memmove(line->history, &line->history[step], (SYSM_GRAPH_SECS - step) * sizeof(double));
+                memmove(line->history, &line->history[step], (GUI_GRAPH_SECS - step) * sizeof(double));
 
-                for (int i = SYSM_GRAPH_SECS - step; i < SYSM_GRAPH_SECS; i++)
+                for (int i = GUI_GRAPH_SECS - step; i < GUI_GRAPH_SECS; i++)
                         line->history[i] = val;
         }
         else {
@@ -84,20 +84,20 @@ static inline void graph_line_history_update(struct sysm_graph_line *line, doubl
                 if (start < 0)
                         start = 0;
 
-                for (int i = start; i <= sec && i < SYSM_GRAPH_SECS; i++)
+                for (int i = start; i <= sec && i < GUI_GRAPH_SECS; i++)
                         line->history[i] = val;
         }
 }
 
-void gui_graph_update(struct sysm_graph *graph, const double *vals, int count)
+void gui_graph_update(struct gui_graph *graph, const double *vals, int count)
 {
-        struct sysm_graph_line *iter;
+        struct gui_graph_line *iter;
         int i = 0;
 
         graph->passed_sec += sysm_update_interval_sec;
 
-        if (graph->passed_sec > SYSM_GRAPH_SECS)
-                graph->passed_sec = SYSM_GRAPH_SECS;
+        if (graph->passed_sec > GUI_GRAPH_SECS)
+                graph->passed_sec = GUI_GRAPH_SECS;
 
         mlib_list_for_each_entry(iter, &graph->lines, list) {
                 double val;

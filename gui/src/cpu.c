@@ -2,7 +2,7 @@
 #include "../include/utils.h"
 #include "gtk/gtk.h"
 
-void gui_cpu_core_init(struct sysm_cpu_box *core, const char *title, bool is_markup)
+void gui_cpu_core_init(struct gui_cpu_card *core, const char *title, bool is_markup)
 {
         core->frame = gtk_frame_new(NULL);
         core->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
@@ -29,7 +29,7 @@ void gui_cpu_core_init(struct sysm_cpu_box *core, const char *title, bool is_mar
         mlib_list_head_init(&core->list);
 }
 
-void gui_cpu_main_core_init(struct sysm_cpu_box *cpu, const char *title, bool is_markup)
+void gui_cpu_main_core_init(struct gui_cpu_card *cpu, const char *title, bool is_markup)
 {
         gui_cpu_core_init(cpu, title, is_markup);
 
@@ -39,9 +39,9 @@ void gui_cpu_main_core_init(struct sysm_cpu_box *cpu, const char *title, bool is
         gui_widget_set_margins(cpu->usage_ghz_label, 10, 10, 0, 10);
 }
 
-struct sysm_cpu_box *gui_cpu_core_create_init(const char *title, bool is_markup)
+struct gui_cpu_card *gui_cpu_core_create_init(const char *title, bool is_markup)
 {
-        struct sysm_cpu_box *core = malloc(sizeof(struct sysm_cpu_box));
+        struct gui_cpu_card *core = malloc(sizeof(struct gui_cpu_card));
 
         if (!core)
                 sysm_log_ret(NULL, SYSM_ERR "Failed to memory allocation in libc malloc\n");
@@ -51,12 +51,12 @@ struct sysm_cpu_box *gui_cpu_core_create_init(const char *title, bool is_markup)
         return core;
 }
 
-void gui_cpu_core_free(struct sysm_cpu_box *core)
+void gui_cpu_core_free(struct gui_cpu_card *core)
 {
         free(core);
 }
 
-void gui_cpu_core_update(struct sysm_cpu_box *core, const struct cpu_core_info *info)
+void gui_cpu_core_update(struct gui_cpu_card *core, const struct cpu_core_info *info)
 {
         char buf[64];
 
@@ -64,18 +64,18 @@ void gui_cpu_core_update(struct sysm_cpu_box *core, const struct cpu_core_info *
         gtk_label_set_markup(GTK_LABEL(core->usage_label), buf);
 }
 
-void gui_cpu_main_core_update(struct sysm_cpu_box *cpu, const struct cpu_info *info)
+void gui_cpu_main_core_update(struct gui_cpu_card *cpu, const struct cpu_info *info)
 {
         char buf[64];
 
-        snprintf(buf, sizeof(buf), "<b>%.1lf%%</b>", info->total_usage_pct);
+        snprintf(buf, sizeof(buf), "<b>%.1lf%%</b>", info->usage_pct);
         gtk_label_set_markup(GTK_LABEL(cpu->usage_label), buf);
 
         snprintf(buf, sizeof(buf), "%.2lf / %.2lf GHz", info->current_ghz, info->max_ghz);
         gtk_label_set_text(GTK_LABEL(cpu->usage_ghz_label), buf);
 }
 
-void gui_cpu_page_init(struct sysm_page_cpu *page, struct sysm_app *app)
+void gui_cpu_page_init(struct gui_page_cpu *page, struct sysm_app *app)
 {
         struct cpu_info *info = &app->backend.sysmon.cpu;
 
@@ -83,20 +83,20 @@ void gui_cpu_page_init(struct sysm_page_cpu *page, struct sysm_app *app)
 
         mlib_list_head_init(&page->cores);
 
-        gui_cpu_main_core_init(&page->all, "CPU", false);
-        gtk_widget_set_margin_end(page->all.frame, 10);
-        gtk_box_append(GTK_BOX(page->base.box), page->all.frame);
+        gui_cpu_main_core_init(&page->total, "CPU", false);
+        gtk_widget_set_margin_end(page->total.frame, 10);
+        gtk_box_append(GTK_BOX(page->base.box), page->total.frame);
 
         for (unsigned int i = 0; i < info->core_count; i++) {
                 char title[32];
-                struct sysm_cpu_box *core;
+                struct gui_cpu_card *core;
 
                 snprintf(title, sizeof(title), "CPU%u", i);
 
                 core = gui_cpu_core_create_init(title, false);
 
                 if (!core) {
-                        struct sysm_cpu_box *tmp;
+                        struct gui_cpu_card *tmp;
                         unsigned int j = 0;
 
                         mlib_list_for_each_entry_safe(core, tmp, &page->cores, list) {
@@ -118,14 +118,14 @@ void gui_cpu_page_init(struct sysm_page_cpu *page, struct sysm_app *app)
         }
 }
 
-void gui_cpu_page_update(struct sysm_page_cpu *page, struct sysm_app *app)
+void gui_cpu_page_update(struct gui_page_cpu *page, struct sysm_app *app)
 {
         struct cpu_info *info = &app->backend.sysmon.cpu;
-        struct sysm_cpu_box *iter;
-        struct sysm_cpu_box *tmp;
+        struct gui_cpu_card *iter;
+        struct gui_cpu_card *tmp;
         unsigned int i = 0;
 
-        gui_cpu_main_core_update(&page->all, info);
+        gui_cpu_main_core_update(&page->total, info);
 
         mlib_list_for_each_entry_safe(iter, tmp, &page->cores, list) {
                 if (i >= info->core_count) {
@@ -143,7 +143,7 @@ void gui_cpu_page_update(struct sysm_page_cpu *page, struct sysm_app *app)
 
         for ( ; i < info->core_count; i++) {
                 char title[32];
-                struct sysm_cpu_box *core;
+                struct gui_cpu_card *core;
 
                 snprintf(title, sizeof(title), "CPU%u", i);
 
@@ -158,10 +158,10 @@ void gui_cpu_page_update(struct sysm_page_cpu *page, struct sysm_app *app)
         }
 }
 
-void gui_cpu_page_destroy(struct sysm_page_cpu *page)
+void gui_cpu_page_destroy(struct gui_page_cpu *page)
 {
-        struct sysm_cpu_box *iter;
-        struct sysm_cpu_box *tmp;
+        struct gui_cpu_card *iter;
+        struct gui_cpu_card *tmp;
 
         mlib_list_for_each_entry_safe(iter, tmp, &page->cores, list) {
                 mlib_list_del(&iter->list);

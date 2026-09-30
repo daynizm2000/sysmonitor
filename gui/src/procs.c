@@ -3,7 +3,7 @@
 #include "gtk/gtk.h"
 #include "gtk/gtksingleselection.h"
 
-G_DEFINE_TYPE(SysmProcLine, sysm_proc_line, G_TYPE_OBJECT)
+G_DEFINE_TYPE(GuiProcLine, gui_proc_line, G_TYPE_OBJECT)
 
 enum {
         SYSM_PROC_TABLE_PID_COL,
@@ -14,19 +14,19 @@ enum {
         SYSM_PROC_TABLE_THREADS_COL
 };
 
-static void sysm_proc_line_init(SysmProcLine *self)
+static void gui_proc_line_init(GuiProcLine *self)
 {
         (void)self;
 }
 
-static void sysm_proc_line_class_init(SysmProcLineClass *klass)
+static void gui_proc_line_class_init(GuiProcLineClass *klass)
 {
         (void)klass;
 }
 
-SysmProcLine *sysm_proc_line_new(const struct proc_info *info)
+GuiProcLine *gui_proc_line_new(const struct proc_info *info)
 {
-        SysmProcLine *l = g_object_new(SYSM_TYPE_PROC_LINE, NULL);
+        GuiProcLine *l = g_object_new(GUI_TYPE_PROC_LINE, NULL);
 
         l->info = info;
         l->pid = info->pid;
@@ -38,8 +38,8 @@ static int proc_line_compare_cpu_desc(gconstpointer a, gconstpointer b, gpointer
 {
         (void)arg;
 
-        const SysmProcLine *la = SYSM_PROC_LINE((gpointer)a);
-        const SysmProcLine *lb = SYSM_PROC_LINE((gpointer)b);
+        const GuiProcLine *la = GUI_PROC_LINE((gpointer)a);
+        const GuiProcLine *lb = GUI_PROC_LINE((gpointer)b);
  
         if (la->info->cpu_usage_pct > lb->info->cpu_usage_pct)
                 return -1;
@@ -57,12 +57,12 @@ static int guint_cmp_desc(gconstpointer a, gconstpointer b)
         return (ua < ub) - (ua > ub);
 }
 
-void sysm_proc_store_init(struct sysm_proc_store *store)
+void gui_proc_store_init(struct gui_proc_store *store)
 {
         GtkSorter *sorter;
         GtkSortListModel *sort_model;
 
-        store->lstore = g_list_store_new(SYSM_TYPE_PROC_LINE);
+        store->lstore = g_list_store_new(GUI_TYPE_PROC_LINE);
         store->pid_to_idx = g_hash_table_new(g_direct_hash, g_direct_equal);
         store->stale = g_array_new(FALSE, FALSE, sizeof(guint));
 
@@ -72,13 +72,13 @@ void sysm_proc_store_init(struct sysm_proc_store *store)
         gtk_single_selection_set_autoselect(store->sel, FALSE);
 }
 
-void sysm_proc_store_destroy(struct sysm_proc_store *store)
+void gui_proc_store_destroy(struct gui_proc_store *store)
 {
         g_hash_table_destroy(store->pid_to_idx);
         g_array_free(store->stale, TRUE);
 }
 
-void sysm_proc_store_update(struct sysm_proc_store *store, mlib_list_head_t *procs)
+void gui_proc_store_update(struct gui_proc_store *store, mlib_list_head_t *procs)
 {
         struct proc_info *iter;
         guint n;
@@ -87,7 +87,7 @@ void sysm_proc_store_update(struct sysm_proc_store *store, mlib_list_head_t *pro
         n = g_list_model_get_n_items(G_LIST_MODEL(store->lstore));
 
         for (guint i = 0; i < n; i++) {
-                SysmProcLine *line = g_list_model_get_item(G_LIST_MODEL(store->lstore), i);
+                GuiProcLine *line = g_list_model_get_item(G_LIST_MODEL(store->lstore), i);
                 g_hash_table_insert(store->pid_to_idx, GUINT_TO_POINTER(line->pid), GUINT_TO_POINTER(i));
                 g_object_unref(line);
         }
@@ -97,7 +97,7 @@ void sysm_proc_store_update(struct sysm_proc_store *store, mlib_list_head_t *pro
 
                 if (g_hash_table_lookup_extended(store->pid_to_idx, GUINT_TO_POINTER(iter->pid), NULL, &idx_ptr)) {
                         guint idx = GPOINTER_TO_UINT(idx_ptr);
-                        SysmProcLine *line = g_list_model_get_item(G_LIST_MODEL(store->lstore), idx);
+                        GuiProcLine *line = g_list_model_get_item(G_LIST_MODEL(store->lstore), idx);
 
                         line->info = iter;
                         line->pid = iter->pid;
@@ -106,7 +106,7 @@ void sysm_proc_store_update(struct sysm_proc_store *store, mlib_list_head_t *pro
                         g_hash_table_remove(store->pid_to_idx, GUINT_TO_POINTER(iter->pid));
                         any_updated = TRUE;
                 } else {
-                        SysmProcLine *line = sysm_proc_line_new(iter);
+                        GuiProcLine *line = gui_proc_line_new(iter);
 
                         g_list_store_append(store->lstore, line);
                         g_object_unref(line);
@@ -152,7 +152,7 @@ static void on_cell_bind(GtkSignalListItemFactory *f, GtkListItem *item, gpointe
 {
         (void)f;
 
-        SysmProcLine *line = SYSM_PROC_LINE(gtk_list_item_get_item(item));
+        GuiProcLine *line = GUI_PROC_LINE(gtk_list_item_get_item(item));
         GtkWidget *label = gtk_list_item_get_child(item);
         int col_idx = GPOINTER_TO_INT(arg);
         char buf[64];
@@ -172,7 +172,7 @@ static void on_cell_bind(GtkSignalListItemFactory *f, GtkListItem *item, gpointe
                         snprintf(buf, sizeof(buf), "%.1lf", line->info->mem_usage_pct);
                         break;
                 case SYSM_PROC_TABLE_RSS_COL:
-                        snprintf(buf, sizeof(buf), "%.1lf MiB", SYSM_B_TO_MIB(line->info->rss_b));
+                        snprintf(buf, sizeof(buf), "%.1lf MiB", B_TO_MIB(line->info->rss_b));
                         break;
                 case SYSM_PROC_TABLE_THREADS_COL:
                         snprintf(buf, sizeof(buf), "%u", line->info->threads);
@@ -182,7 +182,7 @@ static void on_cell_bind(GtkSignalListItemFactory *f, GtkListItem *item, gpointe
         gtk_label_set_text(GTK_LABEL(label), res);
 }
 
-void sysm_proc_table_init(struct sysm_proc_table *table, struct sysm_proc_store *store, const char *title)
+void gui_proc_table_init(struct gui_proc_table *table, struct gui_proc_store *store, const char *title)
 {
         table->frame = gtk_frame_new(NULL);
 
@@ -226,9 +226,9 @@ void sysm_proc_table_init(struct sysm_proc_table *table, struct sysm_proc_store 
         gtk_widget_set_margin_bottom(table->frame, 10);
 }
 
-void gui_procs_page_init(struct sysm_page_procs *page, struct sysm_app *app)
+void gui_procs_page_init(struct gui_page_procs *page, struct sysm_app *app)
 {
         gui_page_base_init(&page->base, "processes", "Processes", "<b>Processes</b>");
-        sysm_proc_table_init(&page->procs, &app->gui.proc_store, NULL);
+        gui_proc_table_init(&page->procs, &app->gui.proc_store, NULL);
         gtk_box_append(GTK_BOX(page->base.box), page->procs.frame);
 }

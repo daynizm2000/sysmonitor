@@ -24,17 +24,17 @@ sysm_errno_t disk_info_init(struct disk_info *diskinfo)
 
         memset(diskinfo, 0, sizeof(struct disk_info));
         mlib_list_head_init(&diskinfo->parts);
+        diskinfo->state = SYSM_STATE_FIRST_UPDATE;
 
         if (mlib_mem_allocator_cache_init(&disk_part_cache,
-                NULL, sizeof(struct disk_partition), 0, 0) < 0)
-
-                sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to create cache allocator for disk_partition struct\n");
+                NULL, sizeof(struct disk_part), 0, 0) < 0)
+                        sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to create cache allocator for disk_part struct\n");
 
         return SYSM_SUCCESS;
 }
 
 static inline void pfs_mount_parse_word_for_disk_part(const char *base_word,
-        unsigned int word, struct disk_partition *part)
+        unsigned int word, struct disk_part *part)
 {
         unsigned int wordlen = 0;
 
@@ -43,8 +43,8 @@ static inline void pfs_mount_parse_word_for_disk_part(const char *base_word,
 
         switch (word) {
                 case PFS_MOUNTS_NAME_POS: {
-                        base_word += sizeof("/dev/") - 1;
-                        wordlen -= sizeof("/dev/") - 1;
+                        base_word += STRLEN_LIT("/dev/");
+                        wordlen -= STRLEN_LIT("/dev/");
 
                         if (wordlen > SYSM_LINUX_NAME_MAXLEN)
                                 wordlen = SYSM_LINUX_NAME_MAXLEN;
@@ -70,7 +70,7 @@ static inline void pfs_mount_parse_word_for_disk_part(const char *base_word,
 }
 
 static void pfs_mounts_parse_for_disk_part(const char *base_line,
-        struct disk_partition *part)
+        struct disk_part *part)
 {
         unsigned int word = 0;
 
@@ -91,7 +91,7 @@ static void pfs_mounts_parse_for_disk_part(const char *base_line,
         }
 }
 
-static void statvfs_parse_for_disk_part(struct disk_partition *part)
+static void statvfs_parse_for_disk_part(struct disk_part *part)
 {
         struct statvfs stvfs;
 
@@ -115,7 +115,7 @@ static inline sysm_errno_t disk_parts_update(mlib_list_head_t *head)
         const char *pattern;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_mounts), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_MOUNTS), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/mounts", fdata, sizeof(fdata));
 
@@ -124,13 +124,13 @@ static inline sysm_errno_t disk_parts_update(mlib_list_head_t *head)
 
         curr = mlib_list_next(head);
 
-        if (strncmp(fdata, "/dev/", sizeof("/dev/") - 1) == 0)
+        if (strncmp(fdata, "/dev/", STRLEN_LIT("/dev/")) == 0)
                 pattern = fdata;
         else
                 pattern = strstr(fdata, "\n/dev/");
                 
         while (pattern) {
-                struct disk_partition *part;
+                struct disk_part *part;
 
                 if (*pattern == '\n')
                         pattern++;
@@ -139,25 +139,25 @@ static inline sysm_errno_t disk_parts_update(mlib_list_head_t *head)
                         part = disk_part_cache.alloc(&disk_part_cache);
 
                         if (!part)
-                                sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to memory allocation in disk_partition cache allocator\n");
+                                sysm_log_ret(SYSM_FAILURE, SYSM_ERR "Failed to memory allocation in disk_part cache allocator\n");
 
-                        memset(part, 0, sizeof(struct disk_partition));
+                        memset(part, 0, sizeof(struct disk_part));
                         mlib_list_add_tail(&part->list, head);
                         curr = &part->list;
                 }
                 else {
-                        part = mlib_list_entry(curr, struct disk_partition, list);
+                        part = mlib_list_entry(curr, struct disk_part, list);
                 }
 
                 pfs_mounts_parse_for_disk_part(pattern, part);
                 statvfs_parse_for_disk_part(part);
 
-                pattern = strstr(pattern + sizeof("/dev/") - 1, "\n/dev/");
+                pattern = strstr(pattern + STRLEN_LIT("/dev/"), "\n/dev/");
                 curr = mlib_list_next(curr);
         }
 
         while (!mlib_list_is_head(curr, head)) {
-                struct disk_partition *p = mlib_list_entry(curr, struct disk_partition, list);
+                struct disk_part *p = mlib_list_entry(curr, struct disk_part, list);
 
                 curr = curr->next;
 
@@ -168,9 +168,9 @@ static inline sysm_errno_t disk_parts_update(mlib_list_head_t *head)
         return SYSM_SUCCESS;
 }
 
-static inline struct disk_partition *find_main_disk_part(mlib_list_head_t *head)
+static inline struct disk_part *find_main_disk_part(mlib_list_head_t *head)
 {
-        struct disk_partition *iter;
+        struct disk_part *iter;
 
         mlib_list_for_each_entry(iter, head, list)
                 if (strcmp(iter->mount_point, "/") == 0)
@@ -237,7 +237,7 @@ static sysm_errno_t pfs_diskstats_parse_file(const char *diskname, unsigned int 
         ssize_t fsize;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_diskstats), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_DISKSTATS), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/diskstats", fdata, sizeof(fdata));
 
@@ -261,8 +261,8 @@ static sysm_errno_t disk_info_update_speed_time(struct disk_info *diskinfo)
                 PFS_DISKSTATS_SEC_READ_POS,
                 PFS_DISKSTATS_SEC_WRITE_POS
         };
-        unsigned long long retvals[sizeof(words) / sizeof(*words)] = {0};
-        const struct disk_partition *mpart;
+        unsigned long long retvals[ARRAY_SIZE(words)] = {0};
+        const struct disk_part *mpart;
 
         mpart = find_main_disk_part(&diskinfo->parts);
 
@@ -270,9 +270,9 @@ static sysm_errno_t disk_info_update_speed_time(struct disk_info *diskinfo)
                 sysm_log(SYSM_WARN "Main disk partition not found\n");
         }
         else {
-                ret = pfs_diskstats_parse_file(mpart->disk_name, words, retvals, sizeof(words) / sizeof(*words));
+                ret = pfs_diskstats_parse_file(mpart->disk_name, words, retvals, ARRAY_SIZE(words));
 
-                if (ret != SYSM_SUCCESS)
+                if (ret)
                         return ret;
         }
         
@@ -288,6 +288,8 @@ sysm_errno_t disk_info_update_first(struct disk_info *diskinfo)
                 return SYSM_FAILURE;
 
         disk_parts_update(&diskinfo->parts);
+
+        sysm_update_status_update(&diskinfo->state);
 
         return disk_info_update_speed_time(diskinfo);
 }
@@ -306,7 +308,7 @@ sysm_errno_t disk_info_update_last(struct disk_info *diskinfo)
 
         ret = disk_info_update_speed_time(diskinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 sysm_log(SYSM_WARN "Failed to get speed time for disk\n");
 
         diskinfo->read_speed_b_sec = (diskinfo->read_speed_b_sec >= old_read_speed_b_sec)
@@ -315,8 +317,10 @@ sysm_errno_t disk_info_update_last(struct disk_info *diskinfo)
         diskinfo->write_speed_b_sec = (diskinfo->write_speed_b_sec >= old_write_speed_b_sec)
                         ? diskinfo->write_speed_b_sec - old_write_speed_b_sec : 0;
 
-        diskinfo->read_speed_b_sec *= LINUX_SECTOR_SIZE / (double)SYSM_UPDATE_INTERVAL_SEC;
-        diskinfo->write_speed_b_sec *= LINUX_SECTOR_SIZE / (double)SYSM_UPDATE_INTERVAL_SEC;
+        diskinfo->read_speed_b_sec *= LINUX_SECTOR_SIZE / (double)sysm_update_interval_sec;
+        diskinfo->write_speed_b_sec *= LINUX_SECTOR_SIZE / (double)sysm_update_interval_sec;
+
+        sysm_update_status_update(&diskinfo->state);
 
         return SYSM_SUCCESS;
 }
@@ -330,7 +334,7 @@ sysm_errno_t disk_info_update(struct disk_info *diskinfo)
 
         ret = disk_info_update_first(diskinfo);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         sysm_sleep();
@@ -344,8 +348,8 @@ void disk_info_destroy(struct disk_info *diskinfo)
                 return;
 
         if (!mlib_list_empty(&diskinfo->parts)) {
-                struct disk_partition *iter;
-                struct disk_partition *tmp;
+                struct disk_part *iter;
+                struct disk_part *tmp;
 
                 mlib_list_for_each_entry_safe(iter, tmp, &diskinfo->parts, list) {
                         mlib_list_del(&iter->list);

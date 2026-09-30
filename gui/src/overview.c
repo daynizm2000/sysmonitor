@@ -28,11 +28,11 @@
 #define LOADAVG_GRAPH_5MIN_LINE_HEX_COLOR HEX_COLOR_BLUE
 #define LOADAVG_GRAPH_15MIN_LINE_HEX_COLOR HEX_COLOR_RED
 
-static struct sysm_graph_line *graph_line_create_init(GtkWidget *box, GdkRGBA *color,
+static struct gui_graph_line *graph_line_create_init(GtkWidget *box, GdkRGBA *color,
                 const char *markup)
 {
         GtkWidget *label;
-        struct sysm_graph_line *line = gui_graph_line_create_init(color);
+        struct gui_graph_line *line = gui_graph_line_create_init(color);
 
         if (!line)
                 return NULL;
@@ -49,7 +49,7 @@ static struct sysm_graph_line *graph_line_create_init(GtkWidget *box, GdkRGBA *c
         return line;
 }
 
-static inline void uptime_init_add(struct sysm_page_overview *page)
+static inline void uptime_init_add(struct gui_page_overview *page)
 {
         page->uptime_label = gtk_label_new("Uptime: 0 days, 0 hours, 0 mins, 0 secs");
 
@@ -59,7 +59,7 @@ static inline void uptime_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->base.box), page->uptime_label);
 }
 
-static inline void summary_cpu_init_add(struct sysm_page_overview *page)
+static inline void summary_cpu_init_add(struct gui_page_overview *page)
 {
         gui_cpu_main_core_init(&page->summary.cpu, "CPU Usage", false);
 
@@ -69,7 +69,7 @@ static inline void summary_cpu_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->summary.box), page->summary.cpu.frame);
 }
 
-static inline void summary_mem_init_add(struct sysm_page_overview *page)
+static inline void summary_mem_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -97,7 +97,7 @@ static inline void summary_mem_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->summary.box), page->summary.mem.frame);
 }
 
-static inline void summary_swap_init_add(struct sysm_page_overview *page)
+static inline void summary_swap_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -125,7 +125,7 @@ static inline void summary_swap_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->summary.box), page->summary.swap.frame);
 }
 
-static inline void summary_network_init_add(struct sysm_page_overview *page)
+static inline void summary_network_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -152,7 +152,7 @@ static inline void summary_network_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->summary.box), page->summary.network.frame);
 }
 
-static inline void summary_disk_init_add(struct sysm_page_overview *page)
+static inline void summary_disk_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -179,7 +179,7 @@ static inline void summary_disk_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->summary.box), page->summary.disk.frame);
 }
 
-static inline void summary_init_add(struct sysm_page_overview *page)
+static inline void summary_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -243,14 +243,14 @@ static void overview_graph_paint_time_frame(cairo_t *cr,
 
 static void graph_draw(GtkDrawingArea *area, cairo_t *cr,
                 const char *vals[OVERVIEW_GRAPH_LEFT_VALS],
-                int width, int height, struct sysm_graph *graph)
+                int width, int height, struct gui_graph *graph)
 {
         GdkRGBA color;
         double vals_y_pos[OVERVIEW_GRAPH_LEFT_VALS] = {0, 0.5, 1};
         cairo_text_extents_t extents;
         int real_width;
         int real_height;
-        struct sysm_graph_line *line;
+        struct gui_graph_line *line;
 
         real_width = width - OVERVIEW_GRAPH_PADDING_LEFT - OVERVIEW_GRAPH_PADDING_RIGHT;
         real_height = height - OVERVIEW_GRAPH_PADDING_TOP - OVERVIEW_GRAPH_PADDING_BOTTOM;
@@ -289,7 +289,7 @@ static void graph_draw(GtkDrawingArea *area, cairo_t *cr,
                         else if (val > 1.0)
                                 val = 1.0; 
 
-                        x = OVERVIEW_GRAPH_PADDING_LEFT + ((double)i * real_width / (SYSM_GRAPH_SECS - 1));
+                        x = OVERVIEW_GRAPH_PADDING_LEFT + ((double)i * real_width / (GUI_GRAPH_SECS - 1));
                         y = OVERVIEW_GRAPH_PADDING_TOP + (real_height * (1.0 - val));
 
                         if (!i)
@@ -309,9 +309,9 @@ static void pct_draw(GtkDrawingArea *area, cairo_t *cr,
         graph_draw(area, cr, vals, width, height, graph);
 }
 
-static inline void graphs_cpu_init_add(struct sysm_page_overview *page)
+static inline void graphs_cpu_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *line;
+        struct gui_graph_line *line;
         
         line = gui_graph_line_create_init(NULL);
 
@@ -327,9 +327,9 @@ static inline void graphs_cpu_init_add(struct sysm_page_overview *page)
         gtk_grid_attach(GTK_GRID(page->graphs.grid), page->graphs.cpu.frame, 0, 0, 1, 1);
 }
 
-static inline void graphs_mem_init_add(struct sysm_page_overview *page)
+static inline void graphs_mem_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *line;
+        struct gui_graph_line *line;
 
         line = gui_graph_line_create_init(NULL);
 
@@ -345,9 +345,9 @@ static inline void graphs_mem_init_add(struct sysm_page_overview *page)
         gtk_grid_attach(GTK_GRID(page->graphs.grid), page->graphs.mem.frame, 1, 0, 1, 1);
 }
 
-static inline void graphs_swap_init_add(struct sysm_page_overview *page)
+static inline void graphs_swap_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *line;
+        struct gui_graph_line *line;
 
         line = gui_graph_line_create_init(NULL);
 
@@ -370,10 +370,10 @@ static void network_draw(GtkDrawingArea *area, cairo_t *cr,
         graph_draw(area, cr, vals, width, height, graph);
 }
 
-static inline void graphs_network_init_add(struct sysm_page_overview *page)
+static inline void graphs_network_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *readline;
-        struct sysm_graph_line *writeline;
+        struct gui_graph_line *readline;
+        struct gui_graph_line *writeline;
         GdkRGBA readline_color;
         GdkRGBA writeline_color;
         GtkWidget *box;
@@ -415,10 +415,10 @@ static void disk_draw(GtkDrawingArea *area, cairo_t *cr,
         graph_draw(area, cr, vals, width, height, graph);
 }
 
-static inline void graphs_disk_init_add(struct sysm_page_overview *page)
+static inline void graphs_disk_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *readline;
-        struct sysm_graph_line *writeline;
+        struct gui_graph_line *readline;
+        struct gui_graph_line *writeline;
         GdkRGBA readline_color;
         GdkRGBA writeline_color;
         GtkWidget *box;
@@ -460,11 +460,11 @@ static void loadavg_draw(GtkDrawingArea *area, cairo_t *cr,
         graph_draw(area, cr, vals, width, height, graph);
 }
 
-static inline void graphs_loadavg_init_add(struct sysm_page_overview *page)
+static inline void graphs_loadavg_init_add(struct gui_page_overview *page)
 {
-        struct sysm_graph_line *min1_line = NULL;
-        struct sysm_graph_line *min5_line = NULL;
-        struct sysm_graph_line *min15_line;
+        struct gui_graph_line *min1_line = NULL;
+        struct gui_graph_line *min5_line = NULL;
+        struct gui_graph_line *min15_line;
         GdkRGBA min1_color;
         GdkRGBA min5_color;
         GdkRGBA min15_color;
@@ -514,7 +514,7 @@ fail:
                 gui_graph_line_free(min5_line);
 }
 
-static inline void graphs_init_add(struct sysm_page_overview *page)
+static inline void graphs_init_add(struct gui_page_overview *page)
 {
         GtkWidget *title;
 
@@ -543,9 +543,9 @@ static inline void graphs_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->base.box), page->graphs.frame);
 }
 
-static inline void procs_init_add(struct sysm_page_overview *page, struct sysm_proc_store *proc_store)
+static inline void procs_init_add(struct gui_page_overview *page, struct gui_proc_store *proc_store)
 {
-        sysm_proc_table_init(&page->tables.procs, proc_store, "<b>Top Processes</b>");
+        gui_proc_table_init(&page->tables.procs, proc_store, "<b>Top Processes</b>");
 
         gtk_widget_set_hexpand(page->tables.procs.frame, TRUE);
         gtk_widget_set_vexpand(page->tables.procs.frame, TRUE);
@@ -561,9 +561,9 @@ static inline void procs_init_add(struct sysm_page_overview *page, struct sysm_p
         gtk_box_append(GTK_BOX(page->tables.box), page->tables.procs.frame);
 }
 
-static inline void disks_init_add(struct sysm_page_overview *page)
+static inline void disks_init_add(struct gui_page_overview *page)
 {
-        sysm_disk_table_init(&page->tables.disks, "<b>Disk Usage</b>");
+        gui_disk_table_init(&page->tables.disks, "<b>Disk Usage</b>");
 
         gtk_widget_set_hexpand(page->tables.disks.frame, TRUE);
         gtk_widget_set_vexpand(page->tables.disks.frame, TRUE);
@@ -579,7 +579,7 @@ static inline void disks_init_add(struct sysm_page_overview *page)
         gtk_box_append(GTK_BOX(page->tables.box), page->tables.disks.frame);
 }
 
-static inline void tables_init_add(struct sysm_page_overview *page, struct sysm_app *app)
+static inline void tables_init_add(struct gui_page_overview *page, struct sysm_app *app)
 {
         page->tables.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
@@ -592,7 +592,7 @@ static inline void tables_init_add(struct sysm_page_overview *page, struct sysm_
         gtk_box_append(GTK_BOX(page->base.box), page->tables.box);
 }
 
-void gui_overview_page_init(struct sysm_page_overview *page, struct sysm_app *app)
+void gui_overview_page_init(struct gui_page_overview *page, struct sysm_app *app)
 {
         gui_page_base_init(&page->base, "overview", "Overview", "<b>Overview</b>");
 
@@ -604,8 +604,8 @@ void gui_overview_page_init(struct sysm_page_overview *page, struct sysm_app *ap
 
 static void graph_lines_destroy(mlib_list_head_t *lines)
 {
-        struct sysm_graph_line *iter;
-        struct sysm_graph_line *tmp;
+        struct gui_graph_line *iter;
+        struct gui_graph_line *tmp;
 
         mlib_list_for_each_entry_safe(iter, tmp, lines, list) {
                 mlib_list_del(&iter->list);
@@ -613,7 +613,7 @@ static void graph_lines_destroy(mlib_list_head_t *lines)
         }
 }
 
-void gui_overview_page_destroy(struct sysm_page_overview *page)
+void gui_overview_page_destroy(struct gui_page_overview *page)
 {
         graph_lines_destroy(&page->graphs.cpu.graph.lines);
         graph_lines_destroy(&page->graphs.mem.graph.lines);
@@ -623,7 +623,7 @@ void gui_overview_page_destroy(struct sysm_page_overview *page)
         graph_lines_destroy(&page->graphs.loadavg.graph.lines);
 }
 
-static inline void uptime_update(struct sysm_page_overview *page,
+static inline void uptime_update(struct gui_page_overview *page,
         unsigned long uptime_sec)
 {
         char buf[64];
@@ -638,12 +638,12 @@ static inline void uptime_update(struct sysm_page_overview *page,
         gtk_label_set_text(GTK_LABEL(page->uptime_label), buf);
 }
 
-static inline void summary_cpu_update(struct sysm_page_overview *page, const struct cpu_info *info)
+static inline void summary_cpu_update(struct gui_page_overview *page, const struct cpu_info *info)
 {
         gui_cpu_main_core_update(&page->summary.cpu, info);
 }
 
-static inline void summary_mem_update(struct sysm_page_overview *page, const struct mem_info *info)
+static inline void summary_mem_update(struct gui_page_overview *page, const struct mem_info *info)
 {
         char buf[128];
 
@@ -654,7 +654,7 @@ static inline void summary_mem_update(struct sysm_page_overview *page, const str
         gtk_label_set_text(GTK_LABEL(page->summary.mem.usage_gib_label), buf);
 }
 
-static inline void summary_swap_update(struct sysm_page_overview *page, const struct swap_info *info)
+static inline void summary_swap_update(struct gui_page_overview *page, const struct swap_info *info)
 {
         char buf[128];
 
@@ -665,29 +665,29 @@ static inline void summary_swap_update(struct sysm_page_overview *page, const st
         gtk_label_set_text(GTK_LABEL(page->summary.swap.usage_gib_label), buf);
 }
 
-static inline void summary_network_update(struct sysm_page_overview *page, const struct network_info *info)
+static inline void summary_network_update(struct gui_page_overview *page, const struct network_info *info)
 {
         char buf[128];
 
-        snprintf(buf, sizeof(buf), " %.1lf MiB/s", SYSM_B_TO_MIB(info->read_speed_b_sec));
+        snprintf(buf, sizeof(buf), " %.1lf MiB/s", B_TO_MIB(info->read_speed_b_sec));
         gtk_label_set_text(GTK_LABEL(page->summary.network.read_speed_label), buf);
 
-        snprintf(buf, sizeof(buf), " %.1lf MiB/s", SYSM_B_TO_MIB(info->write_speed_b_sec));
+        snprintf(buf, sizeof(buf), " %.1lf MiB/s", B_TO_MIB(info->write_speed_b_sec));
         gtk_label_set_text(GTK_LABEL(page->summary.network.write_speed_label), buf);
 }
 
-static inline void summary_disk_update(struct sysm_page_overview *page, const struct disk_info *info)
+static inline void summary_disk_update(struct gui_page_overview *page, const struct disk_info *info)
 {
         char buf[128];
 
-        snprintf(buf, sizeof(buf), "Read: %.1lf MiB/s", SYSM_B_TO_MIB(info->read_speed_b_sec));
+        snprintf(buf, sizeof(buf), "Read: %.1lf MiB/s", B_TO_MIB(info->read_speed_b_sec));
         gtk_label_set_text(GTK_LABEL(page->summary.disk.read_speed_label), buf);
 
-        snprintf(buf, sizeof(buf), "Write: %.1lf MiB/s", SYSM_B_TO_MIB(info->write_speed_b_sec));
+        snprintf(buf, sizeof(buf), "Write: %.1lf MiB/s", B_TO_MIB(info->write_speed_b_sec));
         gtk_label_set_text(GTK_LABEL(page->summary.disk.write_speed_label), buf);
 }
 
-static inline void summary_update(struct sysm_page_overview *page, const struct sysmonitor *sysmon)
+static inline void summary_update(struct gui_page_overview *page, const struct sysmonitor *sysmon)
 {
         summary_cpu_update(page, &sysmon->cpu);
         summary_mem_update(page, &sysmon->mem);
@@ -696,47 +696,47 @@ static inline void summary_update(struct sysm_page_overview *page, const struct 
         summary_disk_update(page, &sysmon->disk);
 }
 
-static inline void graphs_cpu_update(struct sysm_page_overview *page, const struct cpu_info *info)
+static inline void graphs_cpu_update(struct gui_page_overview *page, const struct cpu_info *info)
 {
-        gui_graph_update(&page->graphs.cpu.graph, &info->total_usage_pct, 1);
+        gui_graph_update(&page->graphs.cpu.graph, &info->usage_pct, 1);
 }
 
-static inline void graphs_mem_update(struct sysm_page_overview *page, const struct mem_info *info)
+static inline void graphs_mem_update(struct gui_page_overview *page, const struct mem_info *info)
 {
         gui_graph_update(&page->graphs.mem.graph, &info->usage_pct, 1);
 }
 
-static inline void graphs_swap_update(struct sysm_page_overview *page, const struct swap_info *info)
+static inline void graphs_swap_update(struct gui_page_overview *page, const struct swap_info *info)
 {
         gui_graph_update(&page->graphs.swap.graph, &info->usage_pct, 1);
 }
 
-static inline void graphs_network_update(struct sysm_page_overview *page, const struct network_info *info)
+static inline void graphs_network_update(struct gui_page_overview *page, const struct network_info *info)
 {
         double vals[] = {
-                SYSM_B_TO_MIB(info->read_speed_b_sec),
-                SYSM_B_TO_MIB(info->write_speed_b_sec)
+                B_TO_MIB(info->read_speed_b_sec),
+                B_TO_MIB(info->write_speed_b_sec)
         };
 
         gui_graph_update(&page->graphs.network.graph, vals, sizeof(vals) / sizeof(*vals));
 }
 
-static inline void graphs_disk_update(struct sysm_page_overview *page, const struct disk_info *info)
+static inline void graphs_disk_update(struct gui_page_overview *page, const struct disk_info *info)
 {
         double vals[] = {
-                SYSM_B_TO_MIB(info->read_speed_b_sec),
-                SYSM_B_TO_MIB(info->write_speed_b_sec)
+                B_TO_MIB(info->read_speed_b_sec),
+                B_TO_MIB(info->write_speed_b_sec)
         };
 
         gui_graph_update(&page->graphs.disk.graph, vals, sizeof(vals) / sizeof(*vals));
 }
 
-static inline void graphs_loadavg_update(struct sysm_page_overview *page, const double loadavg[3])
+static inline void graphs_loadavg_update(struct gui_page_overview *page, const double loadavg[3])
 {
         gui_graph_update(&page->graphs.loadavg.graph, loadavg, 3);
 }
 
-static inline void graphs_update(struct sysm_page_overview *page, const struct sysmonitor *sysmon)
+static inline void graphs_update(struct gui_page_overview *page, const struct sysmonitor *sysmon)
 {
         graphs_cpu_update(page, &sysmon->cpu);
         graphs_mem_update(page, &sysmon->mem);
@@ -746,17 +746,17 @@ static inline void graphs_update(struct sysm_page_overview *page, const struct s
         graphs_loadavg_update(page, sysmon->load_avg);
 }
 
-static inline void disks_update(struct sysm_page_overview *page, mlib_list_head_t *parts)
+static inline void disks_update(struct gui_page_overview *page, mlib_list_head_t *parts)
 {
-        sysm_disk_table_update(&page->tables.disks, parts);
+        gui_disk_table_update(&page->tables.disks, parts);
 }
 
-static inline void tables_update(struct sysm_page_overview *page, struct sysm_app *app)
+static inline void tables_update(struct gui_page_overview *page, struct sysm_app *app)
 {
         disks_update(page, &app->backend.sysmon.disk.parts);
 }
 
-void gui_overview_page_update(struct sysm_page_overview *page, struct sysm_app *app)
+void gui_overview_page_update(struct gui_page_overview *page, struct sysm_app *app)
 {
         uptime_update(page, app->backend.sysmon.uptime_sec);
         summary_update(page, &app->backend.sysmon);

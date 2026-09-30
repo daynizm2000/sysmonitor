@@ -5,12 +5,6 @@
 #include <ctype.h>
 #include <string.h>
 
-int sysm_fds_get_fd(int fd)
-{
-        lseek(fd, 0, SEEK_SET);
-        return fd;
-}
-
 ssize_t sysm_read_file(int fd, char *buffer, size_t bufsize)
 {
         ssize_t read_bytes;
@@ -82,7 +76,7 @@ sysm_errno_t sysm_meminfo_file_parse_lines(const char **keys, unsigned long long
                 return SYSM_FAILURE;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_meminfo), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_MEMINFO), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/meminfo", fdata, sizeof(fdata));
 

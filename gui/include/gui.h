@@ -1,20 +1,21 @@
 #pragma once
 
 #include "../../backend/include/sysmonitor.h"
-#include "types.h"
+#include "procs.h"
+#include "disks.h"
 #include <gtk/gtk.h>
 
-#define SYSM_GRAPH_SECS 60
+#define GUI_GRAPH_SECS 60
 
-struct sysm_page {
+struct gui_page {
         GtkWidget *box;
         
-        const char *id; // literal
-        const char *name; // literal
+        const char *id;
+        const char *name;
 };
 
-struct sysm_graph_line {
-        double history[SYSM_GRAPH_SECS];
+struct gui_graph_line {
+        double history[GUI_GRAPH_SECS];
         GdkRGBA color;
         
         mlib_list_head_t list;
@@ -22,7 +23,7 @@ struct sysm_graph_line {
         bool __color;
 };
 
-struct sysm_graph {
+struct gui_graph {
         GtkWidget *area;
         mlib_list_head_t lines;
         int passed_sec;
@@ -30,7 +31,7 @@ struct sysm_graph {
         double maxval;
 };
 
-struct sysm_cpu_box {
+struct gui_cpu_card {
         GtkWidget *frame;
         GtkWidget *box;
 
@@ -40,149 +41,143 @@ struct sysm_cpu_box {
         mlib_list_head_t list;
 };
 
-struct sysm_page_overview {
-        struct sysm_page base;
+struct gui_summary_mem_card {
+        GtkWidget *frame;
+        GtkWidget *box;
+
+        GtkWidget *usage_pct_label;
+        GtkWidget *usage_gib_label;
+};
+
+struct gui_summary_swap_card {
+        GtkWidget *frame;
+        GtkWidget *box;
+
+        GtkWidget *usage_pct_label;
+        GtkWidget *usage_gib_label;
+};
+
+struct gui_summary_network_card {
+        GtkWidget *frame;
+        GtkWidget *box;
+
+        GtkWidget *read_speed_label;
+        GtkWidget *write_speed_label;
+};
+
+struct gui_summary_disk_card {
+        GtkWidget *frame;
+        GtkWidget *box;
+
+        GtkWidget *read_speed_label;
+        GtkWidget *write_speed_label;
+};
+
+struct gui_summary_section {
+        GtkWidget *frame;
+        GtkWidget *box;
+
+        struct gui_cpu_card cpu;
+        struct gui_summary_mem_card mem;
+        struct gui_summary_swap_card swap;
+        struct gui_summary_network_card network;
+        struct gui_summary_disk_card disk;
+};
+
+struct gui_graphs_card {
+        GtkWidget *frame;
+        struct gui_graph graph;
+};
+
+struct gui_graphs_section {
+        GtkWidget *frame;
+        GtkWidget *grid;
+
+        struct gui_graphs_card cpu;
+        struct gui_graphs_card mem;
+        struct gui_graphs_card swap;
+        struct gui_graphs_card network;
+        struct gui_graphs_card disk;
+        struct gui_graphs_card loadavg;
+};
+
+struct gui_tables_section {
+        GtkWidget *box;
+
+        struct gui_proc_table procs;
+        struct gui_disk_table disks;
+};
+
+struct gui_page_overview {
+        struct gui_page base;
 
         GtkWidget *uptime_label;
 
-        struct {
-                GtkWidget *frame;
-                GtkWidget *box;
-
-                struct sysm_cpu_box cpu;
-
-                struct {
-                        GtkWidget *frame;
-                        GtkWidget *box;
-
-                        GtkWidget *usage_pct_label;
-                        GtkWidget *usage_gib_label;
-                } mem;
-
-                struct {
-                        GtkWidget *frame;
-                        GtkWidget *box;
-
-                        GtkWidget *usage_pct_label;
-                        GtkWidget *usage_gib_label;
-                } swap;
-
-                struct {
-                        GtkWidget *frame;
-                        GtkWidget *box;
-
-                        GtkWidget *read_speed_label;
-                        GtkWidget *write_speed_label;
-                } network;
-
-                struct {
-                        GtkWidget *frame;
-                        GtkWidget *box;
-
-                        GtkWidget *read_speed_label;
-                        GtkWidget *write_speed_label;
-                } disk;
-        } summary;
-
-        struct {
-                GtkWidget *frame;
-                GtkWidget *grid;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } cpu;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } mem;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } swap;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } network;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } disk;
-
-                struct {
-                        GtkWidget *frame;
-                        struct sysm_graph graph;
-                } loadavg;
-        } graphs;
-
-        struct {
-                GtkWidget *box;
-
-                struct sysm_proc_table procs;
-                struct sysm_disk_table disks;
-        } tables;
+        struct gui_summary_section summary;
+        struct gui_graphs_section graphs;
+        struct gui_tables_section tables;
 };
 
-struct sysm_page_cpu {
-        struct sysm_page base;
+struct gui_page_cpu {
+        struct gui_page base;
 
-        struct sysm_cpu_box all;
+        struct gui_cpu_card total;
         mlib_list_head_t cores;
 };
 
-struct sysm_page_procs {
-        struct sysm_page base;
-        struct sysm_proc_table procs;
+struct gui_page_procs {
+        struct gui_page base;
+        struct gui_proc_table procs;
 };
 
-struct sysm_page_sysinfo {
-        struct sysm_page base;
-        
-        struct {
-                GtkWidget *frame;
-                GtkWidget *info_label;
-        } system;
+struct gui_sysinfo_card {
+        GtkWidget *frame;
+        GtkWidget *info_label;
+};
 
-        struct {
-                GtkWidget *frame;
-                GtkWidget *info_label;
-        } motherboard;
+struct gui_page_sysinfo {
+        struct gui_page base;
+        
+        struct gui_sysinfo_card system;
+        struct gui_sysinfo_card motherboard;
 
         GtkWidget *about_label;
 };
 
+struct gui_app_running_card {
+        time_t start_time;
+        GtkWidget *label;
+};
+
+struct gui_app_refresh_rate_card {
+        GtkWidget *box;
+        GtkWidget *label;
+        GtkWidget *dropdown;
+};
+
+struct app_gui {
+        GtkApplication *app;
+
+        struct gui_proc_store proc_store;
+
+        struct gui_page_overview overview;
+        struct gui_page_cpu cpu;
+        struct gui_page_procs procs;
+        struct gui_page_sysinfo sysinfo;
+
+        guint timer_id;
+        
+        struct gui_app_running_card running;
+        struct gui_app_refresh_rate_card refresh_rate;
+};
+
+struct app_backend {
+        struct sysmonitor sysmon;
+};
+
 struct sysm_app {
-        struct {
-                GtkApplication *app;
-
-                struct sysm_proc_store proc_store;
-
-                struct sysm_page_overview overview;
-                struct sysm_page_cpu cpu;
-                struct sysm_page_procs procs;
-                struct sysm_page_sysinfo sysinfo;
-
-                guint timer_id;
-                
-                struct {
-                        time_t start_time;
-                        GtkWidget *label;
-                } running_for;
-
-                struct {
-                        GtkWidget *box;
-                        GtkWidget *label;
-                        GtkWidget *dropdown;
-                } refresh_rate;
-        } gui;
-
-        struct {
-                struct sysmonitor sysmon;
-        } backend;
+        struct app_gui gui;
+        struct app_backend backend;
 };
 
 sysm_errno_t sysm_app_init(struct sysm_app *app);

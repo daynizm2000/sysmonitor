@@ -2,17 +2,17 @@
 
 #include "gui.h"
 
-void gui_page_base_init(struct sysm_page *page, const char *id,
+void gui_page_base_init(struct gui_page *page, const char *id,
         const char *name, const char *title);
 
-struct sysm_graph_line *gui_graph_line_create_init(GdkRGBA *color);
-void gui_graph_line_free(struct sysm_graph_line *line);
+struct gui_graph_line *gui_graph_line_create_init(GdkRGBA *color);
+void gui_graph_line_free(struct gui_graph_line *line);
 
-void gui_graph_init(struct sysm_graph *graph, struct sysm_graph_line *line,
+void gui_graph_init(struct gui_graph *graph, struct gui_graph_line *line,
                 void (*draw)(GtkDrawingArea*, cairo_t*, int, int, gpointer),
                 void *arg, double maxval);
 
-void gui_graph_update(struct sysm_graph *graph, const double *vals, int count);
+void gui_graph_update(struct gui_graph *graph, const double *vals, int count);
 
 void gui_columnview_add_column(GtkWidget *columnview, const char *title,
                 void (*setup)(GtkSignalListItemFactory *f, GtkListItem *item, gpointer arg),

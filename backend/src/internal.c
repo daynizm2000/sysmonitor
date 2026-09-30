@@ -9,7 +9,7 @@ static unsigned long long get_sys_cpu_ticks(void)
         unsigned long long u = 0, ni = 0, s = 0, id = 0, io = 0, irq = 0, sirq = 0, steal = 0;
 
         if (sysm_cached_fds)
-                fsize = sysm_read_file(sysm_fds_get_fd(sysm_cached_fds->pfs_stat), fdata, sizeof(fdata));
+                fsize = sysm_read_file(sysm_cached_fds_get_fd(SYSM_FDS_PFS_STAT), fdata, sizeof(fdata));
         else
                 fsize = sysm_read_file_from_path("/proc/stat", fdata, sizeof(fdata));
 

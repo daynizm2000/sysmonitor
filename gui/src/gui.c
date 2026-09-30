@@ -12,21 +12,21 @@
 #define GUI_WINDOW_WIDTH_DEFAULT_PX 1000
 #define GUI_WINDOW_HEIGHT_DEFAULT_PX 1000
 
-static inline void gui_running_for_update(struct sysm_app *app)
+static inline void gui_running_update(struct sysm_app *app)
 {
         char buf[64];
-        time_t diff = time(NULL) - app->gui.running_for.start_time;
+        time_t diff = time(NULL) - app->gui.running.start_time;
 
         snprintf(buf, sizeof(buf), "Running for: %02ld:%02ld:%02ld",
                         diff / 3600, (diff % 3600) / 60, diff % 60);
         
-        gtk_label_set_text(GTK_LABEL(app->gui.running_for.label), buf);
+        gtk_label_set_text(GTK_LABEL(app->gui.running.label), buf);
 }
 
 static void gui_update(struct sysm_app *app)
 {
-        gui_running_for_update(app);
-        sysm_proc_store_update(&app->gui.proc_store, &app->backend.sysmon.proc_table);
+        gui_running_update(app);
+        gui_proc_store_update(&app->gui.proc_store, &app->backend.sysmon.proc_table.list);
         gui_overview_page_update(&app->gui.overview, app);
         gui_cpu_page_update(&app->gui.cpu, app);
         // gui_procs_page_update(&app->gui.procs, app);
@@ -56,9 +56,9 @@ static void gui_window_destroy(GtkWidget *widget, gpointer arg)
         }
 }
 
-static GtkWidget *gui_window_create_init(struct sysm_app *app)
+static GtkWidget *gui_window_create_init(struct app_gui *app)
 {
-        GtkWidget *window = gtk_application_window_new(app->gui.app);
+        GtkWidget *window = gtk_application_window_new(app->app);
 
         gtk_window_set_title(GTK_WINDOW(window), GUI_TOOLTIP);
         gtk_window_set_default_size(GTK_WINDOW(window),
@@ -86,16 +86,16 @@ static void gui_content_widgets_add_init(struct sysm_app *app)
         gui_sysinfo_page_init(&app->gui.sysinfo, app);
 }
 
-static GtkWidget *gui_content_stack_create_init(struct sysm_app *app)
+static GtkWidget *gui_content_stack_create_init(struct app_gui *app)
 {
         GtkWidget *stack;
 
         stack = gtk_stack_new();
 
-        gtk_stack_add_titled(GTK_STACK(stack), app->gui.overview.base.box, app->gui.overview.base.id, app->gui.overview.base.name);
-        gtk_stack_add_titled(GTK_STACK(stack), app->gui.cpu.base.box, app->gui.cpu.base.id, app->gui.cpu.base.name);
-        gtk_stack_add_titled(GTK_STACK(stack), app->gui.procs.base.box, app->gui.procs.base.id, app->gui.procs.base.name);
-        gtk_stack_add_titled(GTK_STACK(stack), app->gui.sysinfo.base.box, app->gui.sysinfo.base.id, app->gui.sysinfo.base.name);
+        gtk_stack_add_titled(GTK_STACK(stack), app->overview.base.box, app->overview.base.id, app->overview.base.name);
+        gtk_stack_add_titled(GTK_STACK(stack), app->cpu.base.box, app->cpu.base.id, app->cpu.base.name);
+        gtk_stack_add_titled(GTK_STACK(stack), app->procs.base.box, app->procs.base.id, app->procs.base.name);
+        gtk_stack_add_titled(GTK_STACK(stack), app->sysinfo.base.box, app->sysinfo.base.id, app->sysinfo.base.name);
 
         gtk_widget_set_hexpand(stack, TRUE);
         gtk_widget_set_vexpand(stack, TRUE);
@@ -103,11 +103,11 @@ static GtkWidget *gui_content_stack_create_init(struct sysm_app *app)
         return stack;
 }
 
-static inline void gui_running_for_init_add(struct sysm_app *app, GtkBox *parent)
+static inline void gui_running_init_add(struct app_gui *app, GtkBox *parent)
 {
-        app->gui.running_for.label = gtk_label_new("Running for: 00:00:00");
-        gui_widget_set_margins(app->gui.running_for.label, 10, 10, 0, 10);
-        gtk_box_append(parent, app->gui.running_for.label);
+        app->running.label = gtk_label_new("Running for: 00:00:00");
+        gui_widget_set_margins(app->running.label, 10, 10, 0, 10);
+        gtk_box_append(parent, app->running.label);
 }
 
 static inline void gui_refresh_rate_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer arg)
@@ -129,25 +129,25 @@ static inline void gui_refresh_rate_changed(GtkDropDown *dropdown, GParamSpec *p
         app->gui.timer_id = g_timeout_add_seconds(sysm_update_interval_sec, gui_update_tick, app);
 }
 
-static inline void gui_refresh_rate_init_add(struct sysm_app *app, GtkBox *parent)
+static inline void gui_refresh_rate_init_add(struct app_gui *app, GtkBox *parent)
 {
         const char *times[] = {"1s", "2s", "3s", "5s", "10s", "15s", "20s", NULL};
 
-        app->gui.refresh_rate.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+        app->refresh_rate.box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
         
-        app->gui.refresh_rate.label = gtk_label_new("Refresh Rate: ");
-        gtk_widget_set_halign(app->gui.refresh_rate.label, GTK_ALIGN_START);
-        gtk_box_append(GTK_BOX(app->gui.refresh_rate.box), app->gui.refresh_rate.label);
+        app->refresh_rate.label = gtk_label_new("Refresh Rate: ");
+        gtk_widget_set_halign(app->refresh_rate.label, GTK_ALIGN_START);
+        gtk_box_append(GTK_BOX(app->refresh_rate.box), app->refresh_rate.label);
 
-        app->gui.refresh_rate.dropdown = gtk_drop_down_new_from_strings(times);
+        app->refresh_rate.dropdown = gtk_drop_down_new_from_strings(times);
 
-        gtk_widget_set_halign(app->gui.refresh_rate.dropdown, GTK_ALIGN_START);
-        gtk_box_append(GTK_BOX(app->gui.refresh_rate.box), app->gui.refresh_rate.dropdown);
+        gtk_widget_set_halign(app->refresh_rate.dropdown, GTK_ALIGN_START);
+        gtk_box_append(GTK_BOX(app->refresh_rate.box), app->refresh_rate.dropdown);
 
-        gui_widget_set_margins(app->gui.refresh_rate.box, 10, 10, 0, 10);
-        gtk_box_append(parent, app->gui.refresh_rate.box);
+        gui_widget_set_margins(app->refresh_rate.box, 10, 10, 0, 10);
+        gtk_box_append(parent, app->refresh_rate.box);
 
-        g_signal_connect(app->gui.refresh_rate.dropdown, "notify::selected",
+        g_signal_connect(app->refresh_rate.dropdown, "notify::selected",
                 G_CALLBACK(gui_refresh_rate_changed), app);
 }
 
@@ -158,6 +158,7 @@ static void gui_widgets_add_init(struct sysm_app *app, GtkWidget *window)
         GtkWidget *contbox;
         GtkWidget *stack;
         GtkWidget *sidebar;
+        struct app_gui *gui = &app->gui;
 
         box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
         gtk_window_set_child(GTK_WINDOW(window), box);
@@ -170,10 +171,10 @@ static void gui_widgets_add_init(struct sysm_app *app, GtkWidget *window)
         sidebar = gui_navigation_widget_create_init();
         gtk_box_append(GTK_BOX(navbox), sidebar);
 
-        gui_refresh_rate_init_add(app, GTK_BOX(navbox));
-        gui_running_for_init_add(app, GTK_BOX(navbox));
+        gui_refresh_rate_init_add(gui, GTK_BOX(navbox));
+        gui_running_init_add(gui, GTK_BOX(navbox));
 
-        stack = gui_content_stack_create_init(app);
+        stack = gui_content_stack_create_init(gui);
         gtk_stack_sidebar_set_stack(GTK_STACK_SIDEBAR(sidebar), GTK_STACK(stack));
         gtk_box_append(GTK_BOX(contbox), stack);
 
@@ -201,7 +202,7 @@ static void gui_activate_window(GtkApplication *gapp, gpointer arg)
 
         (void)gapp;
 
-        window = gui_window_create_init(app);
+        window = gui_window_create_init(&app->gui);
         gui_widgets_add_init(app, window);
         gui_timer_updater_init(app);
 
@@ -210,16 +211,16 @@ static void gui_activate_window(GtkApplication *gapp, gpointer arg)
         gtk_window_present(GTK_WINDOW(window));
 }
 
-static sysm_errno_t sysm_gui_init(struct sysm_app *app)
+static sysm_errno_t sysm_gui_init(struct app_gui *app)
 {
-        app->gui.running_for.start_time = time(NULL);
+        app->running.start_time = time(NULL);
 
-        sysm_proc_store_init(&app->gui.proc_store);
+        gui_proc_store_init(&app->proc_store);
 
-        app->gui.app = gtk_application_new(GUI_APP_NAME,
+        app->app = gtk_application_new(GUI_APP_NAME,
                 G_APPLICATION_DEFAULT_FLAGS);
 
-        g_signal_connect(app->gui.app, "activate",
+        g_signal_connect(app->app, "activate",
                 G_CALLBACK(gui_activate_window), app);
 
         return SYSM_SUCCESS;
@@ -234,12 +235,12 @@ sysm_errno_t sysm_app_init(struct sysm_app *app)
 
         ret = sysm_init(&app->backend.sysmon);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 sysm_log_ret(ret, SYSM_ERR "Failed to sysmonitor backend struct initialization\n");
 
-        ret = sysm_gui_init(app);
+        ret = sysm_gui_init(&app->gui);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 sysm_log_ret(ret, SYSM_ERR "Failed to GUI interface initialization\n");
 
         return SYSM_SUCCESS;
@@ -255,7 +256,7 @@ int sysm_app_run(struct sysm_app *app)
 
 void sysm_app_destroy(struct sysm_app *app)
 {
-        sysm_proc_store_destroy(&app->gui.proc_store);
+        gui_proc_store_destroy(&app->gui.proc_store);
         gui_overview_page_destroy(&app->gui.overview);
         gui_cpu_page_destroy(&app->gui.cpu);
         g_object_unref(app->gui.app);

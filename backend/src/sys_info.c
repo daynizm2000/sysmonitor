@@ -18,12 +18,12 @@ static inline void sys_info_set_distr(struct sys_info *sys_info)
         if (bufsize < 0)
                 sysm_log_ret(, SYSM_ERR "Failed to read: /etc/os-release\n");
 
-        start = memmem(buffer, bufsize, "PRETTY_NAME=", sizeof("PRETTY_NAME=") - 1);
+        start = memmem(buffer, bufsize, "PRETTY_NAME=", STRLEN_LIT("PRETTY_NAME="));
 
         if (!start)
                 goto parse_err;
 
-        start += sizeof("PRETTY_NAME=") - 1;
+        start += STRLEN_LIT("PRETTY_NAME=");
 
         if (*start == '"')
                 in_quotes = true;
@@ -69,12 +69,12 @@ static inline void sys_info_set_cpu_name(struct sys_info *sys_info)
         if (bufsize < 0)
                 sysm_log_ret(, SYSM_ERR "Failed to open /proc/cpuinfo\n");
 
-        start = memmem(buffer, bufsize, "model name", sizeof("model name") - 1);
+        start = memmem(buffer, bufsize, "model name", STRLEN_LIT("model name"));
 
         if (!start)
                 return;
 
-        start += sizeof("model name") - 1;
+        start += STRLEN_LIT("model name");
 
         while (*start != ':') {
                 start++;
@@ -139,7 +139,7 @@ static inline void motherboard_info_init(struct motherboard_info *mb_info)
         str_del_last_n(mb_info->bios_ver);
 }
 
-sysm_errno_t sysm_sys_info_init(struct sys_info *sys_info)
+sysm_errno_t sys_info_init(struct sys_info *sys_info)
 {
         struct utsname uts;
 

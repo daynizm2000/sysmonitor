@@ -2,7 +2,7 @@
 #include "../include/utils.h"
 #include "gtk/gtk.h"
 
-void gui_sysinfo_page_update(struct sysm_page_sysinfo *page)
+void gui_sysinfo_page_update(struct gui_page_sysinfo *page)
 {
         (void)page;
 }
@@ -20,7 +20,7 @@ static inline GtkWidget *sys_info_block_frame_create_init(const char *markup)
         return frame;
 }
 
-static inline void sys_info_system_init(struct sysm_page_sysinfo *page,
+static inline void sys_info_system_init(struct gui_page_sysinfo *page,
         struct sys_info *info)
 {
         char buf[512];
@@ -37,7 +37,7 @@ static inline void sys_info_system_init(struct sysm_page_sysinfo *page,
         gtk_widget_set_halign(page->system.info_label, GTK_ALIGN_START);
 }
 
-static inline void sys_info_motherboard_init(struct sysm_page_sysinfo *page,
+static inline void sys_info_motherboard_init(struct gui_page_sysinfo *page,
         struct motherboard_info *info)
 {
         char buf[512];
@@ -53,7 +53,7 @@ static inline void sys_info_motherboard_init(struct sysm_page_sysinfo *page,
         gtk_widget_set_halign(page->motherboard.info_label, GTK_ALIGN_START);
 }
 
-static inline void sys_info_about_init(struct sysm_page_sysinfo *page)
+static inline void sys_info_about_init(struct gui_page_sysinfo *page)
 {
         char buf[256];
 
@@ -74,7 +74,7 @@ static inline void sys_info_about_init(struct sysm_page_sysinfo *page)
         gtk_widget_set_halign(page->about_label, GTK_ALIGN_CENTER);
 }
 
-void gui_sysinfo_page_init(struct sysm_page_sysinfo *page, struct sysm_app *app)
+void gui_sysinfo_page_init(struct gui_page_sysinfo *page, struct sysm_app *app)
 {
         gui_page_base_init(&page->base, "system_info", "System Info", "<b>System Info</b>");
 

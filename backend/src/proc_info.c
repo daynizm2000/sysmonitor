@@ -22,27 +22,22 @@ static struct sysm_internal_info proc_table_internal_info;
 
 static inline void proc_info_clear(struct proc_info *procinfo)
 {
-        memset(procinfo->name, 0, sizeof(procinfo->name));
-        procinfo->cpu_usage_pct = 0;
-        procinfo->mem_usage_pct = 0;
+        memset(procinfo, 0, sizeof(struct proc_info));
         procinfo->pid = -1;
-        procinfo->rss_b = 0;
-        procinfo->threads = 0;
 }
 
 void proc_info_init(struct proc_info *procinfo)
 {
         proc_info_clear(procinfo);
+
+        procinfo->state = SYSM_STATE_FIRST_UPDATE;
 }
 
 static inline void pfs_pid_stat_word_parse(struct proc_info *procinfo,
         const char *base_word, unsigned int word)
 {
-        const char *val;
-        unsigned int val_len;
-
-        val = base_word;
-        val_len = 0;
+        const char *val = base_word;
+        unsigned int val_len = 0;
 
         if (*val == '(') {
                 val++;
@@ -56,25 +51,24 @@ static inline void pfs_pid_stat_word_parse(struct proc_info *procinfo,
         }
 
         switch (word) {
-                case PROC_PID_STAT_NAME_LINE: {
+                case PROC_PID_STAT_NAME_LINE:
                         if (val_len > SYSM_LINUX_COMM_MAXLEN)
                                 val_len = SYSM_LINUX_COMM_MAXLEN;
 
                         strncpy(procinfo->name, val, val_len);
                         break;
-                }
-                case PROC_PID_STAT_UTIME_LINE: {
+
+                case PROC_PID_STAT_UTIME_LINE:
                         procinfo->__utime = atol(val);
-                        break;       
-                }
-                case PROC_PID_STAT_STIME_LINE: {
+                        break;    
+
+                case PROC_PID_STAT_STIME_LINE:
                         procinfo->__stime = atol(val);
                         break;
-                }
-                case PROC_PID_STAT_THREADS_LINE: {
+
+                case PROC_PID_STAT_THREADS_LINE:
                         procinfo->threads = atoi(val);
                         break;
-                }
         }
 }
 
@@ -137,20 +131,16 @@ static inline sysm_errno_t pfs_pid_stat_parse(struct proc_info *procinfo)
 static inline void pfs_pid_statm_word_parse(struct proc_info *procinfo,
         const char *base_word, unsigned int word)
 {
-        const char *val;
-        unsigned int val_len;
-
-        val = base_word;
-        val_len = 0;
+        const char *val = base_word;
+        unsigned int val_len = 0;
 
         while (!isspace(val[val_len]))
                 val_len++;
 
         switch (word) {
-                case PROC_PID_STATM_RSS_LINE: {
+                case PROC_PID_STATM_RSS_LINE:
                         procinfo->rss_b = atol(val) * sysconf(_SC_PAGESIZE);
                         break;
-                }
         }
 }
 
@@ -204,12 +194,14 @@ sysm_errno_t proc_info_update_first(struct proc_info *procinfo,
         if (procinfo->rss_b && internal_info->memtotal_b)
                 procinfo->mem_usage_pct = (double)procinfo->rss_b / (double)internal_info->memtotal_b * 100;
 
+        sysm_update_status_update(&procinfo->state);
+
         return SYSM_SUCCESS;
 }
 
 static inline void proc_info_cpu_usage_parse(struct proc_info *procinfo, struct sysm_internal_info *internal_info)
 {
-       unsigned int pfs_stat_words[] = {
+       unsigned int words[] = {
                 PROC_PID_STAT_STIME_LINE,
                 PROC_PID_STAT_UTIME_LINE
         };
@@ -221,8 +213,7 @@ static inline void proc_info_cpu_usage_parse(struct proc_info *procinfo, struct 
         old_stime = procinfo->__stime;
         old_utime = procinfo->__utime;
 
-        pfs_pid_stat_parse_words(procinfo, pfs_stat_words,
-                sizeof(pfs_stat_words) / sizeof(*pfs_stat_words));
+        pfs_pid_stat_parse_words(procinfo, words, ARRAY_SIZE(words));
 
         old_total_ticks = old_stime + old_utime;
         total_ticks = procinfo->__stime + procinfo->__utime;
@@ -249,6 +240,8 @@ sysm_errno_t proc_info_update_last(struct proc_info *procinfo, struct sysm_inter
         
         proc_info_cpu_usage_parse(procinfo, internal_info);
 
+        sysm_update_status_update(&procinfo->state);
+
         return SYSM_SUCCESS;
 }
 
@@ -258,7 +251,7 @@ sysm_errno_t proc_info_update(struct proc_info *procinfo, struct sysm_internal_i
 
         ret = proc_info_update_first(procinfo, internal_info, pid);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         sysm_sleep();
@@ -271,12 +264,15 @@ void proc_info_destroy(struct proc_info *procinfo)
         proc_info_clear(procinfo);
 }
 
-sysm_errno_t proc_info_table_init(mlib_list_head_t *head)
+sysm_errno_t proc_info_table_init(struct proc_table *table)
 {
         int ret;
+        mlib_list_head_t *head;
 
-        if (!head)
+        if (!table)
                 return SYSM_FAILURE;
+
+        head = &table->list;
 
         ret = mlib_mem_allocator_cache_init(&proc_info_cache,
                 NULL, sizeof(struct proc_info), 0, 0);
@@ -298,14 +294,17 @@ static inline bool strisdigits(const char *str)
         return true;
 }
 
-sysm_errno_t proc_info_table_update_first(mlib_list_head_t *head, struct sysm_internal_info *internal_info)
+sysm_errno_t proc_info_table_update_first(struct proc_table *table, struct sysm_internal_info *internal_info)
 {
         DIR *dir;
         struct dirent *entry;
         mlib_list_head_t *curr;
+        mlib_list_head_t *head;
 
-        if (!head)
+        if (!table)
                 return SYSM_FAILURE;
+
+        head = &table->list;
 
         dir = opendir("/proc");
 
@@ -363,12 +362,15 @@ sysm_errno_t proc_info_table_update_first(mlib_list_head_t *head, struct sysm_in
         return SYSM_SUCCESS;
 }
 
-sysm_errno_t proc_info_table_update_last(mlib_list_head_t *head, struct sysm_internal_info *internal_info)
+sysm_errno_t proc_info_table_update_last(struct proc_table *table, struct sysm_internal_info *internal_info)
 {
         struct proc_info *iter;
-
-        if (!head)
+        mlib_list_head_t *head;
+        
+        if (!table)
                 return SYSM_FAILURE;
+
+        head = &table->list;
 
         if (!internal_info) {
                 internal_info = &proc_table_internal_info;
@@ -378,7 +380,7 @@ sysm_errno_t proc_info_table_update_last(mlib_list_head_t *head, struct sysm_int
         mlib_list_for_each_entry(iter, head, list) {
                 pid_t pid = iter->pid;
 
-                if (proc_info_update_last(iter, internal_info) != SYSM_SUCCESS)
+                if (proc_info_update_last(iter, internal_info))
                         sysm_log(SYSM_WARN
                                 "Failed to two part update process pid=%d, in process table\n",
                                 pid);
@@ -387,26 +389,29 @@ sysm_errno_t proc_info_table_update_last(mlib_list_head_t *head, struct sysm_int
         return SYSM_SUCCESS;
 }
 
-sysm_errno_t proc_info_table_update(mlib_list_head_t *head, struct sysm_internal_info *internal_info)
+sysm_errno_t proc_info_table_update(struct proc_table *table, struct sysm_internal_info *internal_info)
 {
         sysm_errno_t ret;
 
-        ret = proc_info_table_update_first(head, internal_info);
+        ret = proc_info_table_update_first(table, internal_info);
 
-        if (ret != SYSM_SUCCESS)
+        if (ret)
                 return ret;
 
         sysm_sleep();
 
-        return proc_info_table_update_last(head, internal_info);
+        return proc_info_table_update_last(table, internal_info);
 }
 
-void proc_info_table_destroy(mlib_list_head_t *head)
+void proc_info_table_destroy(struct proc_table *table)
 {
         struct proc_info *iter;
         struct proc_info *tmp;
+
+        if (!table)
+                return;
         
-        mlib_list_for_each_entry_safe(iter, tmp, head, list) {
+        mlib_list_for_each_entry_safe(iter, tmp, &table->list, list) {
                 proc_info_destroy(iter);
                 mlib_list_del(&iter->list);
                 proc_info_cache.free(&proc_info_cache, iter);
