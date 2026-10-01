@@ -22,15 +22,20 @@ static struct sysm_internal_info proc_table_internal_info;
 
 static inline void proc_info_clear(struct proc_info *procinfo)
 {
-        memset(procinfo, 0, sizeof(struct proc_info));
+        procinfo->cpu_usage_pct = 0;
+        procinfo->mem_usage_pct = 0;
         procinfo->pid = -1;
+        procinfo->rss_b = 0;
+        procinfo->state = SYSM_STATE_FIRST_UPDATE;
+        procinfo->threads = 0;
+        procinfo->__stime = 0;
+        procinfo->__utime = 0;
+        memset(procinfo->name, 0, SYSM_LINUX_COMM_MAXLEN);
 }
 
 void proc_info_init(struct proc_info *procinfo)
 {
         proc_info_clear(procinfo);
-
-        procinfo->state = SYSM_STATE_FIRST_UPDATE;
 }
 
 static inline void pfs_pid_stat_word_parse(struct proc_info *procinfo,
@@ -329,7 +334,7 @@ sysm_errno_t proc_info_table_update_first(struct proc_table *table, struct sysm_
                 if (mlib_list_is_head(curr, head)) {
                         pinf = proc_info_cache.alloc(&proc_info_cache);
 
-                        if (!curr) {
+                        if (!pinf) {
                                 sysm_log(SYSM_ERR "Failed to allocate proc_info obj in cache allocator\n");
                                 continue;
                         }

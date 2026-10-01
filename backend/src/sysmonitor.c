@@ -13,7 +13,7 @@ unsigned int sysm_update_interval_sec = SYSM_UPDATE_INTERVAL_SEC;
 
 const char *fpaths[SYSM_FDS_NR] = {
         "/proc/stat", "/proc/net/dev",
-        "proc/meminfo",
+        "/proc/meminfo",
         "/proc/mounts", "/proc/diskstats",
         "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
         "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"
